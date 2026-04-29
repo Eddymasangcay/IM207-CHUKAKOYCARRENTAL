@@ -1,22 +1,22 @@
-{% extends "base.html" %}
-{% block title %}Terms &amp; Conditions — {{ site_brand }}{% endblock %}
+﻿{% extends "Base.html" %}
+{% block title %}Terms &amp; Conditions â€” {{ site_brand }}{% endblock %}
 {% block head_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='Styles/Dashboard.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='Styles/Rental_compliance.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='Styles/RentalCompliance.css') }}">
 {% endblock %}
 {% block body_class %}ck-page-rental{% endblock %}
 {% block main_class %}ck-main--wide{% endblock %}
 
 {% block content %}
     {% set rental_step = 2 %}
-    {% include 'partials/rental_stepper.html' %}
+    {% include 'partials/RentalStepper.html' %}
 
     <div class="dashboard rc-page ck-container">
         <div class="welcome">
             <h2>Terms &amp; Conditions</h2>
             <p>Read the terms below. When you agree, you will continue to a <strong>separate</strong> page to upload your ID.</p>
             {% if transport and pending %}
-            <p class="rc-summary"><strong>Vehicle:</strong> {{ transport.name }} · <strong>Estimated total:</strong> ${{ '%.2f' % pending.total_price }} · <strong>Dates:</strong> {{ pending.pickup_date }} → {{ pending.return_date }}</p>
+            <p class="rc-summary"><strong>Vehicle:</strong> {{ transport.name }} Â· <strong>Estimated total:</strong> ${{ '%.2f' % pending.total_price }} Â· <strong>Dates:</strong> {{ pending.pickup_date }} â†’ {{ pending.return_date }}</p>
             {% endif %}
         </div>
 
@@ -24,10 +24,10 @@
             <h3>Terms &amp; Conditions</h3>
             <div class="rc-terms-scroll" tabindex="0">
                 <h4 class="rc-terms-h">Introduction</h4>
-                <p>These Terms and Conditions (“Terms”) govern the rental of vehicles and the use of services provided by the Company. By accessing, booking, or using our services, you acknowledge that you have read, understood, and agreed to be legally bound by these Terms.</p>
+                <p>These Terms and Conditions (â€œTermsâ€) govern the rental of vehicles and the use of services provided by the Company. By accessing, booking, or using our services, you acknowledge that you have read, understood, and agreed to be legally bound by these Terms.</p>
 
                 <h4 class="rc-terms-h">Eligibility</h4>
-                <p>You must be at least twenty-one (21) years of age and possess a valid, government-issued driver’s license. The Company reserves the right to verify all submitted documents and deny service if requirements are not met.</p>
+                <p>You must be at least twenty-one (21) years of age and possess a valid, government-issued driverâ€™s license. The Company reserves the right to verify all submitted documents and deny service if requirements are not met.</p>
 
                 <h4 class="rc-terms-h">Booking and Agreement</h4>
                 <p>All reservations are subject to vehicle availability and confirmation. The Company reserves the right to cancel or refuse any booking if false, incomplete, or misleading information is provided.</p>
@@ -90,3 +90,4 @@
         </form>
     </div>
 {% endblock %}
+

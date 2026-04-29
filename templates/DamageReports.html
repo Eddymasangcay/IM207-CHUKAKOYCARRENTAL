@@ -1,8 +1,8 @@
-{% extends "base.html" %}
-{% block title %}Damage reports — {{ site_brand }}{% endblock %}
+﻿{% extends "Base.html" %}
+{% block title %}Damage reports â€” {{ site_brand }}{% endblock %}
 {% block head_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='Styles/Dashboard.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='Styles/Damage_reports.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='Styles/DamageReports.css') }}">
 {% endblock %}
 {% block body_class %}ck-page-dashboard{% endblock %}
 {% block main_class %}ck-main--wide{% endblock %}
@@ -76,16 +76,16 @@
                 </thead>
                 <tbody>
                     {% for d in damages %}
-                    <tr data-vehicle="{{ d.vehicle.name if d.vehicle else '—' }}" data-severity="{{ d.severity or 'moderate' }}">
+                    <tr data-vehicle="{{ d.vehicle.name if d.vehicle else 'â€”' }}" data-severity="{{ d.severity or 'moderate' }}">
                         <td>{{ d.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                        <td>{{ d.vehicle.name if d.vehicle else '—' }}</td>
+                        <td>{{ d.vehicle.name if d.vehicle else 'â€”' }}</td>
                         <td>
                             {% if d.responsible_party %}
                                 {{ d.responsible_party }}
                             {% elif d.booking and d.booking.user %}
                                 {{ d.booking.user.username }}
                             {% else %}
-                                —
+                                â€”
                             {% endif %}
                         </td>
                         <td>
@@ -101,7 +101,7 @@
                             {% endif %}
                         </td>
                         <td>{{ d.area_on_vehicle }}</td>
-                        <td class="dr-clip">{{ (d.damage_description or '')[:80] }}{% if (d.damage_description or '')|length > 80 %}…{% endif %}</td>
+                        <td class="dr-clip">{{ (d.damage_description or '')[:80] }}{% if (d.damage_description or '')|length > 80 %}â€¦{% endif %}</td>
                         <td>
                             {% if can_view_all_damages %}
                             <button type="button" class="btn-secondary-outline btn-sm dr-open-status" data-target="dr-status-dlg-{{ d.id }}">Update</button>
@@ -121,7 +121,7 @@
             <div class="dr-dialog-inner">
                 <button type="button" class="fleet-modal-close dr-dialog-x" aria-label="Close" data-close="dr-status-dlg-{{ d.id }}">&times;</button>
                 <h3>Update damage status</h3>
-                <p class="dr-meta">Damage #{{ d.id }} · {{ d.vehicle.name if d.vehicle else 'Unknown vehicle' }}</p>
+                <p class="dr-meta">Damage #{{ d.id }} Â· {{ d.vehicle.name if d.vehicle else 'Unknown vehicle' }}</p>
                 <form action="{{ url_for('staff_update_damage_status', damage_id=d.id) }}" method="POST" class="dr-status-modal-form">
                     {{ csrf_input()|safe }}
                     {% set wf = d.workflow_status %}
@@ -152,7 +152,7 @@
                 <p class="dr-meta">{{ d.created_at.strftime('%Y-%m-%d %H:%M') }} UTC</p>
                 <dl class="dr-dl">
                     <dt>Vehicle</dt>
-                    <dd>{{ d.vehicle.name if d.vehicle else '—' }} {% if d.vehicle %}({{ region_label(d.vehicle.region) }}){% endif %}</dd>
+                    <dd>{{ d.vehicle.name if d.vehicle else 'â€”' }} {% if d.vehicle %}({{ region_label(d.vehicle.region) }}){% endif %}</dd>
                     <dt>Area on vehicle</dt>
                     <dd>{{ d.area_on_vehicle }}</dd>
                     <dt>Damage detail</dt>
@@ -162,22 +162,22 @@
                     <dt>Resolution</dt>
                     <dd>{% if d.is_resolved %}Resolved{% else %}Open{% endif %}</dd>
                     <dt>Estimated repair cost</dt>
-                    <dd>{% if d.repair_estimate_usd is not none %}${{ '%.2f' % d.repair_estimate_usd }}{% else %}—{% endif %}</dd>
+                    <dd>{% if d.repair_estimate_usd is not none %}${{ '%.2f' % d.repair_estimate_usd }}{% else %}â€”{% endif %}</dd>
                     <dt>Responsible party</dt>
-                    <dd>{{ d.responsible_party or '—' }}</dd>
+                    <dd>{{ d.responsible_party or 'â€”' }}</dd>
                     <dt>Linked booking</dt>
                     <dd>
                         {% if d.booking_id %}
                             #{{ d.booking_id }}
                             {% if d.booking and d.booking.user %}
-                                · Customer: {{ d.booking.user.username }}
+                                Â· Customer: {{ d.booking.user.username }}
                             {% endif %}
                         {% else %}
-                            —
+                            â€”
                         {% endif %}
                     </dd>
                     <dt>Logged by</dt>
-                    <dd>{% if d.reporter %}{{ d.reporter.username }}{% else %}—{% endif %}</dd>
+                    <dd>{% if d.reporter %}{{ d.reporter.username }}{% else %}â€”{% endif %}</dd>
                 </dl>
                 {% if d.booking_id %}
                 <p class="dr-actions"><a class="btn btn-sm" href="{{ url_for('booking_track', booking_id=d.booking_id) }}">Open rental track</a></p>
@@ -249,3 +249,4 @@
         })();
     </script>
 {% endblock %}
+

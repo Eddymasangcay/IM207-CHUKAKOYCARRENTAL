@@ -1,5 +1,5 @@
-{% extends "base.html" %}
-{% block title %}Fleet — {{ site_brand }}{% endblock %}
+﻿{% extends "Base.html" %}
+{% block title %}Fleet â€” {{ site_brand }}{% endblock %}
 {% block head_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='Styles/Transportation.css') }}">
 {% endblock %}
@@ -11,7 +11,7 @@
         <h1>Our fleet</h1>
         <p>Browse vehicles for your region. Open details for full specs, then book when you are ready.</p>
         {% if viewer and not (is_admin or is_staff) %}
-        <p class="page-hero-region">Showing vehicles for <strong>{{ region_label(viewer_region) }}</strong> — update region in your <a href="{{ url_for('dashboard') }}">dashboard</a> if needed.</p>
+        <p class="page-hero-region">Showing vehicles for <strong>{{ region_label(viewer_region) }}</strong> â€” update region in your <a href="{{ url_for('dashboard') }}">dashboard</a> if needed.</p>
         {% elif viewer and (is_admin or is_staff) %}
         <p class="page-hero-region muted-hero">Staff view: all regions visible.</p>
         {% endif %}
@@ -59,12 +59,12 @@
         </form>
         </div>
         {% if has_date_filter %}
-        <p class="page-hero-region">Availability mode is active for {{ search_pickup }} → {{ search_return }}. Cards marked unavailable cannot be booked for those dates.</p>
+        <p class="page-hero-region">Availability mode is active for {{ search_pickup }} â†’ {{ search_return }}. Cards marked unavailable cannot be booked for those dates.</p>
         {% endif %}
     </header>
 
     {% set rental_step = 1 %}
-    {% include 'partials/rental_stepper.html' %}
+    {% include 'partials/RentalStepper.html' %}
 
     <script type="application/json" id="fleet-json-data">{{ fleet_json|safe }}</script>
 
@@ -88,8 +88,8 @@
                 <h3>{{ t.name }}</h3>
                 <p class="fleet-specs">
                     {% if t.seats %}{{ t.seats }} seats{% endif %}
-                    {% if t.fuel_type %}{% if t.seats %} · {% endif %}{{ t.fuel_type|title }}{% endif %}
-                    {% if t.transmission %} · {{ t.transmission|title }}{% endif %}
+                    {% if t.fuel_type %}{% if t.seats %} Â· {% endif %}{{ t.fuel_type|title }}{% endif %}
+                    {% if t.transmission %} Â· {{ t.transmission|title }}{% endif %}
                 </p>
                 <p class="fleet-price"><b>{{ money_by_region(t.price, t.region) }}</b> <span class="per">/ day</span></p>
                 <div class="fleet-card-actions">
@@ -101,7 +101,7 @@
         {% else %}
         <p class="empty-fleet">
             {% if search_q %}
-                No vehicles match “{{ search_q }}”.
+                No vehicles match â€œ{{ search_q }}â€.
             {% else %}
                 No vehicles in the fleet yet.
             {% endif %}
@@ -250,3 +250,4 @@
         })();
     </script>
 {% endblock %}
+

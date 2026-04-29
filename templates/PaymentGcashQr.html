@@ -1,5 +1,5 @@
-{% extends "base.html" %}
-{% block title %}GCash QR — {{ site_brand }}{% endblock %}
+﻿{% extends "Base.html" %}
+{% block title %}GCash QR â€” {{ site_brand }}{% endblock %}
 {% block head_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='Styles/Dashboard.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='Styles/Payment.css') }}">
@@ -9,7 +9,7 @@
 
 {% block content %}
     {% set rental_step = 5 %}
-    {% include 'partials/rental_stepper.html' %}
+    {% include 'partials/RentalStepper.html' %}
 
     <div class="dashboard ck-container">
         <div class="welcome">
@@ -20,13 +20,13 @@
         <div class="gcash-qr-shell">
             <div class="gcash-qr-card">
                 <div class="gcash-qr-frame">
-                    <img class="gcash-qr-img" src="{{ url_for('static', filename='GcashQR.jpg') }}" alt="GCash QR — scan with the GCash app" loading="eager">
+                    <img class="gcash-qr-img" src="{{ url_for('static', filename='GcashQR.jpg') }}" alt="GCash QR â€” scan with the GCash app" loading="eager">
                 </div>
                 <p class="gcash-qr-fees">Transfer fees may apply.</p>
 
                 <div class="gcash-qr-merchant">
                     <span class="gcash-qr-merchant-name">{{ merchant_title }}</span>
-                    <span class="gcash-qr-edit" title="Merchant name (demo)" aria-hidden="true">✎</span>
+                    <span class="gcash-qr-edit" title="Merchant name (demo)" aria-hidden="true">âœŽ</span>
                 </div>
                 <p class="gcash-qr-masked">{{ masked_account_name }}</p>
                 <p class="gcash-qr-line"><span class="gcash-qr-label">Mobile No.:</span> {{ masked_mobile }}</p>
@@ -35,7 +35,7 @@
                 <div class="gcash-qr-meta">
                     <p><strong>Vehicle:</strong> {{ transport.name }}</p>
                     {% if pickup_date and return_date %}
-                    <p><strong>Pickup:</strong> {{ pickup_date }} → <strong>Return:</strong> {{ return_date }}</p>
+                    <p><strong>Pickup:</strong> {{ pickup_date }} â†’ <strong>Return:</strong> {{ return_date }}</p>
                     {% endif %}
                     <p><strong>Rental days:</strong> {{ quantity }}</p>
                     {% if delivery_address %}
@@ -64,3 +64,4 @@
         </div>
     </div>
 {% endblock %}
+

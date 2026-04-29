@@ -1,5 +1,5 @@
-{% extends "base.html" %}
-{% block title %}Receipt #{{ booking.id }} — {{ site_brand }}{% endblock %}
+﻿{% extends "Base.html" %}
+{% block title %}Receipt #{{ booking.id }} â€” {{ site_brand }}{% endblock %}
 {% block head_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='Styles/Dashboard.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='Styles/Receipt.css') }}">
@@ -9,18 +9,18 @@
 
 {% block content %}
     {% set rental_step = 6 %}
-    {% include 'partials/rental_stepper.html' %}
+    {% include 'partials/RentalStepper.html' %}
 
     <div class="dashboard receipt-page ck-container">
         <div class="receipt-paper">
             <header class="receipt-header">
                 <p class="receipt-brand">{{ site_brand }}</p>
-                <p class="receipt-sub">Rental receipt · Thank you for your business</p>
+                <p class="receipt-sub">Rental receipt Â· Thank you for your business</p>
                 <div class="receipt-id-row">
                     <span>Receipt #<strong>{{ '%06d' % booking.id }}</strong>
                         <button type="button" class="ck-btn ck-btn--ghost ck-btn--sm" data-copy="{{ '%06d' % booking.id }}" data-label="Copy">Copy #</button>
                     </span>
-                    <span>{{ booking.created_at.strftime('%b %d, %Y · %H:%M') }}</span>
+                    <span>{{ booking.created_at.strftime('%b %d, %Y Â· %H:%M') }}</span>
                 </div>
             </header>
 
@@ -34,7 +34,7 @@
                 <div class="receipt-line"><span>Payment</span><span>
                     {% if booking.payment_status == 'paid' %}Paid{% else %}{{ booking.payment_status|title }}{% endif %}
                     {% if booking.payment_method %}
-                        · {% if booking.payment_method == 'gcash' %}GCash{% elif booking.payment_method == 'paymaya' %}PayMaya{% elif booking.payment_method == 'credit_card' %}Credit card{% elif booking.payment_method == 'debit_card' %}Debit card{% elif booking.payment_method == 'paypal' %}PayPal{% elif booking.payment_method == 'cash' %}Cash{% else %}{{ booking.payment_method }}{% endif %}
+                        Â· {% if booking.payment_method == 'gcash' %}GCash{% elif booking.payment_method == 'paymaya' %}PayMaya{% elif booking.payment_method == 'credit_card' %}Credit card{% elif booking.payment_method == 'debit_card' %}Debit card{% elif booking.payment_method == 'paypal' %}PayPal{% elif booking.payment_method == 'cash' %}Cash{% else %}{{ booking.payment_method }}{% endif %}
                     {% endif %}
                     {% if booking.pay_currency %} ({{ booking.pay_currency }}){% endif %}
                 </span></div>
@@ -44,25 +44,25 @@
                 {% endif %}
                 <div class="receipt-line"><span>Delivery received</span><span>
                     {% if booking.delivery_received %}Yes{% else %}No{% endif %}
-                    {% if booking.delivery_received_at %} · {{ booking.delivery_received_at.strftime('%Y-%m-%d') }}{% endif %}
+                    {% if booking.delivery_received_at %} Â· {{ booking.delivery_received_at.strftime('%Y-%m-%d') }}{% endif %}
                 </span></div>
                 <div class="receipt-line"><span>Admin returned</span><span>
                     {% if booking.delivery_returned %}Yes{% else %}No{% endif %}
-                    {% if booking.delivery_returned_at %} · {{ booking.delivery_returned_at.strftime('%Y-%m-%d') }}{% endif %}
+                    {% if booking.delivery_returned_at %} Â· {{ booking.delivery_returned_at.strftime('%Y-%m-%d') }}{% endif %}
                 </span></div>
                 <div class="receipt-line"><span>User returned</span><span>
                     {% if booking.delivery_returned_by_user %}Yes{% else %}No{% endif %}
-                    {% if booking.delivery_returned_by_user_at %} · {{ booking.delivery_returned_by_user_at.strftime('%Y-%m-%d') }}{% endif %}
+                    {% if booking.delivery_returned_by_user_at %} Â· {{ booking.delivery_returned_by_user_at.strftime('%Y-%m-%d') }}{% endif %}
                 </span></div>
                 <div class="receipt-line"><span>Expected delivery</span><span>
-                    {% if booking.expected_delivery_at %}{{ booking.expected_delivery_at.strftime('%Y-%m-%d %H:%M') }}{% else %}—{% endif %}
+                    {% if booking.expected_delivery_at %}{{ booking.expected_delivery_at.strftime('%Y-%m-%d %H:%M') }}{% else %}â€”{% endif %}
                 </span></div>
                 <div class="receipt-line"><span>Actual delivery</span><span>
-                    {% if booking.actual_delivery_at %}{{ booking.actual_delivery_at.strftime('%Y-%m-%d %H:%M') }}{% else %}—{% endif %}
+                    {% if booking.actual_delivery_at %}{{ booking.actual_delivery_at.strftime('%Y-%m-%d %H:%M') }}{% else %}â€”{% endif %}
                 </span></div>
                 <div class="receipt-line"><span>Delivery delay</span><span>
                     {% if booking.is_delivery_delayed %}
-                        Delayed by {{ booking.delivery_delay_minutes or 0 }} min{% if booking.delay_reason %} · {{ booking.delay_reason }}{% endif %}
+                        Delayed by {{ booking.delivery_delay_minutes or 0 }} min{% if booking.delay_reason %} Â· {{ booking.delay_reason }}{% endif %}
                     {% else %}
                         On time
                     {% endif %}
@@ -117,7 +117,7 @@
 
                 {% if booking.rental_start %}
                 <div class="receipt-line receipt-period-line"><span>Rental period</span><span>
-                    {{ booking.rental_start.strftime('%Y-%m-%d') }} → {{ booking.rental_end.strftime('%Y-%m-%d') if booking.rental_end else '—' }}
+                    {{ booking.rental_start.strftime('%Y-%m-%d') }} â†’ {{ booking.rental_end.strftime('%Y-%m-%d') if booking.rental_end else 'â€”' }}
                 </span></div>
                 {% endif %}
 
@@ -126,10 +126,10 @@
         </div>
 
         <div class="receipt-next ck-card-surface">
-            <h3 class="receipt-next-title">What’s next</h3>
+            <h3 class="receipt-next-title">Whatâ€™s next</h3>
             <ul class="receipt-next-list">
-                <li><strong>Pickup:</strong> Arrive during desk hours (demo: 8:00–18:00) with this receipt and a valid driver license.</li>
-                <li><strong>Branch:</strong> Chukakoy Plaza, Metro Cebu · <strong>Phone:</strong> +63 32 000 0000</li>
+                <li><strong>Pickup:</strong> Arrive during desk hours (demo: 8:00â€“18:00) with this receipt and a valid driver license.</li>
+                <li><strong>Branch:</strong> Chukakoy Plaza, Metro Cebu Â· <strong>Phone:</strong> +63 32 000 0000</li>
                 <li><strong>Track your rental:</strong> live map and dates stay on your booking page.</li>
             </ul>
             <div class="receipt-next-actions">
@@ -144,3 +144,4 @@
         </div>
     </div>
 {% endblock %}
+

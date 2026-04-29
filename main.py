@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session, url_for, abort, flash, send_file
+﻿from flask import Flask, render_template, request, redirect, session, url_for, abort, flash, send_file
 from io import BytesIO
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -12,13 +12,13 @@ import random
 import secrets
 import string
 
-app = Flask(__name__, static_folder='.', static_url_path='/static', template_folder='templates')
+app = Flask(__name__, static_folder='.', static_url_path='/static', template_folder='Templates')
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32)
 
-# Set up database path - use instance folder
+# Set up database path - use Database folder
 basedir = os.path.abspath(os.path.dirname(__file__))
-instance_folder = os.path.join(basedir, 'instance')
-os.makedirs(instance_folder, exist_ok=True)
+database_folder = os.path.join(basedir, 'Database')
+os.makedirs(database_folder, exist_ok=True)
 
 # Set up upload folder for images
 UPLOAD_FOLDER = os.path.join(basedir, 'static', 'uploads')
@@ -34,7 +34,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Database configuration - use absolute path with proper formatting
-db_path = os.path.join(instance_folder, 'Sharkwatch.db')
+db_path = os.path.join(database_folder, 'CCRS-BMBB.db')
 # Convert Windows backslashes to forward slashes for SQLite URI
 db_uri = db_path.replace('\\', '/')
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_uri}"
@@ -61,10 +61,10 @@ def _mime_for_id_extension(ext: str) -> str:
         'webp': 'image/webp',
     }.get(ext, 'application/octet-stream')
 
-# GCash QR (simulated InstaPay-style) — display strings only; QR encodes a reference payload, not a live P2M string.
+# GCash QR (simulated InstaPay-style) â€” display strings only; QR encodes a reference payload, not a live P2M string.
 GCASH_QR_MERCHANT_TITLE = "C.K Cars"
 GCASH_QR_MASKED_NAME = "ED****O M."
-GCASH_QR_MASKED_MOBILE = "+63 992 152 ••••"
+GCASH_QR_MASKED_MOBILE = "+63 992 152 â€¢â€¢â€¢â€¢"
 
 
 def _get_csrf_token():
@@ -458,7 +458,7 @@ class Transportation(db.Model):
     image_local = db.Column(db.String(500), nullable=True)  # uploaded file path under static
     description = db.Column(db.Text, nullable=True)
     specs = db.Column(db.Text, nullable=True)
-    region = db.Column(db.String(2), default='PH', nullable=False)  # PH or US — fleet exclusive region
+    region = db.Column(db.String(2), default='PH', nullable=False)  # PH or US â€” fleet exclusive region
     seats = db.Column(db.Integer, nullable=True)
     fuel_type = db.Column(db.String(30), nullable=True)
     transmission = db.Column(db.String(30), nullable=True)
@@ -1350,7 +1350,7 @@ def vehicle_detail(vehicle_id):
         available_for_dates = not _has_vehicle_booking_conflict(transport.id, pickup_date, return_date)
     img = vehicle_image_url(transport)
     return render_template(
-        'vehicle_detail.html',
+        'VehicleDetail.html',
         transport=transport,
         search_pickup=pickup_hint,
         search_return=return_hint,
@@ -1434,7 +1434,7 @@ def _finalize_rental_request_after_payment(booking):
 
 @app.route('/rental/compliance')
 def rental_compliance():
-    """Legacy URL — terms and ID are now separate steps."""
+    """Legacy URL â€” terms and ID are now separate steps."""
     return redirect(url_for('rental_terms'))
 
 
@@ -1458,7 +1458,7 @@ def rental_terms():
             session.pop('rental_terms_accepted_at', None)
             session.modified = True
         transport = Transportation.query.get(pb.get('transportation_id'))
-        return render_template('rental_terms.html', transport=transport, pending=pb)
+        return render_template('RentalTerms.html', transport=transport, pending=pb)
 
     if not request.form.get('terms_agree'):
         flash('You must read and accept the Terms & Conditions to continue.', 'error')
@@ -1491,7 +1491,7 @@ def rental_upload_id():
         pb = session.get('pending_booking')
         transport = Transportation.query.get(pb.get('transportation_id'))
         return render_template(
-            'rental_id_upload.html',
+            'RentalIdUpload.html',
             transport=transport,
             pending=pb,
         )
@@ -1562,7 +1562,7 @@ def rental_upload_id():
     session.modified = True
     flash(
         'Your ID was submitted for review. An administrator will verify your documents. '
-        'You can pay once it is approved — check your dashboard.',
+        'You can pay once it is approved â€” check your dashboard.',
         'success',
     )
     return redirect(url_for('dashboard'))
@@ -1715,7 +1715,7 @@ def admin_renter_review_add():
     rating = request.form.get('rating', type=int)
     body = request.form.get('body', '').strip()
     if not renter_id or not body or rating is None or rating < 1 or rating > 5:
-        flash('Renter, rating (1–5), and review text are required.', 'error')
+        flash('Renter, rating (1â€“5), and review text are required.', 'error')
         return redirect(url_for('dashboard'))
     renter = User.query.get_or_404(renter_id)
     if renter.is_staff():
@@ -1985,10 +1985,10 @@ def payment_gcash_qr():
         return redirect(url_for('index'))
 
     transport = Transportation.query.get_or_404(g['transportation_id'])
-    masked_uid = f"············{g['reference'][-6:].upper()}"
+    masked_uid = f"Â·Â·Â·Â·Â·Â·Â·Â·Â·Â·Â·Â·{g['reference'][-6:].upper()}"
 
     return render_template(
-        'payment_gcash_qr.html',
+        'PaymentGcashQr.html',
         transport=transport,
         total_price=g['total_price'],
         quantity=g.get('quantity', 1),
@@ -2095,7 +2095,7 @@ def process_payment():
     pending['delivery_address'] = delivery_address
 
     if payment_method == 'gcash':
-        flash('For GCash, use “Continue to GCash QR”, scan the code, then confirm payment.', 'error')
+        flash('For GCash, use â€œContinue to GCash QRâ€, scan the code, then confirm payment.', 'error')
         return redirect(url_for('payment'))
 
     if payment_method in ('credit_card', 'debit_card'):
@@ -2308,8 +2308,6 @@ def booking_set_status(booking_id):
     booking.delivery_received_at = None
     booking.delivery_returned = False
     booking.delivery_returned_at = None
-    booking.delivery_returned_by_user = False
-    booking.delivery_returned_by_user_at = None
     booking.delivery_returned_by_user = False
     booking.delivery_returned_by_user_at = None
 
@@ -2602,7 +2600,7 @@ def booking_track(booking_id):
         )
     show_damage_history = len(damages) > 0
     return render_template(
-        'booking_track.html',
+        'BookingTrack.html',
         booking=booking,
         user=current_user,
         damages=damages,
@@ -2765,7 +2763,7 @@ def damage_reports():
     vehicle_damage_counts = sorted(vehicle_damage_counts.items(), key=lambda kv: kv[0].lower())
 
     return render_template(
-        'damage_reports.html',
+        'DamageReports.html',
         damages=damages,
         vehicle_damage_counts=vehicle_damage_counts,
         can_view_all_damages=current_user.is_staff(),
@@ -3058,29 +3056,29 @@ def initialize_default_transportations(force: bool = False):
     """
     default_transportations = [
         {'name': 'Economy Car', 'price': 25.00, 'region': 'PH', 'seats': 4, 'fuel_type': 'gasoline', 'transmission': 'automatic', 'image_url': 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=400',
-         'description': 'Ideal for Metro Manila traffic—easy to park and fuel-efficient.',
-         'specs': '4 seats · Gas · Auto · A/C'},
+         'description': 'Ideal for Metro Manila trafficâ€”easy to park and fuel-efficient.',
+         'specs': '4 seats Â· Gas Â· Auto Â· A/C'},
         {'name': 'Sedan', 'price': 35.00, 'region': 'PH', 'seats': 5, 'fuel_type': 'gasoline', 'transmission': 'automatic', 'image_url': 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=400',
          'description': 'Comfortable business and family trips with generous trunk space.',
-         'specs': '5 seats · Auto · Android Auto · Cruise control'},
+         'specs': '5 seats Â· Auto Â· Android Auto Â· Cruise control'},
         {'name': 'SUV', 'price': 50.00, 'region': 'PH', 'seats': 7, 'fuel_type': 'diesel', 'transmission': 'automatic', 'image_url': 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400',
          'description': 'High clearance for provincial roads and weekend getaways.',
-         'specs': '7 seats · AWD option · Roof rails'},
+         'specs': '7 seats Â· AWD option Â· Roof rails'},
         {'name': 'Luxury Car', 'price': 75.00, 'region': 'PH', 'seats': 5, 'fuel_type': 'gasoline', 'transmission': 'automatic', 'image_url': 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=400',
          'description': 'Premium interior and smooth ride for VIP transfers.',
-         'specs': 'Leather · Premium audio · 5 seats'},
+         'specs': 'Leather Â· Premium audio Â· 5 seats'},
         {'name': 'Van', 'price': 60.00, 'region': 'US', 'seats': 8, 'fuel_type': 'diesel', 'transmission': 'automatic', 'image_url': 'https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?w=400',
          'description': 'Airport shuttles and group travel with room for luggage.',
-         'specs': '8 seats · Sliding doors · USB ports'},
+         'specs': '8 seats Â· Sliding doors Â· USB ports'},
         {'name': 'Motorcycle', 'price': 15.00, 'region': 'US', 'seats': 2, 'fuel_type': 'gasoline', 'transmission': 'manual', 'image_url': 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=400',
          'description': 'Quick urban hops with helmet included (where applicable).',
-         'specs': '2-up · ABS · 300cc class'},
+         'specs': '2-up Â· ABS Â· 300cc class'},
         {'name': 'Truck', 'price': 80.00, 'region': 'US', 'seats': 5, 'fuel_type': 'diesel', 'transmission': 'automatic', 'image_url': 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=400',
          'description': 'Hauling and contractor jobs with bed liner.',
-         'specs': 'Crew cab · 4WD · Tow package'},
+         'specs': 'Crew cab Â· 4WD Â· Tow package'},
         {'name': 'Bus', 'price': 100.00, 'region': 'US', 'seats': 30, 'fuel_type': 'diesel', 'transmission': 'automatic', 'image_url': 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=400',
-         'description': 'Large groups and events—driver packages available on request.',
-         'specs': '30+ seats · A/C · PA system'},
+         'description': 'Large groups and eventsâ€”driver packages available on request.',
+         'specs': '30+ seats Â· A/C Â· PA system'},
     ]
     
     seed_missing = force or Transportation.query.count() == 0

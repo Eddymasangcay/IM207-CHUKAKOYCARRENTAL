@@ -1,8 +1,8 @@
-{% extends "base.html" %}
-{% block title %}Track rental #{{ booking.id }} — {{ site_brand }}{% endblock %}
+﻿{% extends "Base.html" %}
+{% block title %}Track rental #{{ booking.id }} â€” {{ site_brand }}{% endblock %}
 {% block head_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='Styles/Dashboard.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='Styles/Booking_track.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='Styles/BookingTrack.css') }}">
 {% endblock %}
 {% block body_class %}ck-page-dashboard{% endblock %}
 {% block main_class %}ck-main--wide{% endblock %}
@@ -13,7 +13,7 @@
     <div class="dashboard track-wrap ck-container">
         <div class="welcome">
             <h2>Rental tracking</h2>
-            <p>Booking #{{ booking.id }} · {{ booking.transportation.name }} · Plate {{ booking.plate_number or '—' }}</p>
+            <p>Booking #{{ booking.id }} Â· {{ booking.transportation.name }} Â· Plate {{ booking.plate_number or 'â€”' }}</p>
             <p class="track-status-line">
                 Status:
                 <span class="track-status-pill track-status-{{ (booking.booking_status or 'confirmed')|lower }}">
@@ -27,32 +27,32 @@
             <p class="muted small">
                 Delivery received:
                 <strong>{{ 'Yes' if booking.delivery_received else 'No' }}</strong>
-                {% if booking.delivery_received_at %} · {{ booking.delivery_received_at.strftime('%Y-%m-%d') }}{% endif %}
+                {% if booking.delivery_received_at %} Â· {{ booking.delivery_received_at.strftime('%Y-%m-%d') }}{% endif %}
             </p>
             <p class="muted small">
                 Admin returned:
                 <strong>{{ 'Yes' if booking.delivery_returned else 'No' }}</strong>
-                {% if booking.delivery_returned_at %} · {{ booking.delivery_returned_at.strftime('%Y-%m-%d') }}{% endif %}
+                {% if booking.delivery_returned_at %} Â· {{ booking.delivery_returned_at.strftime('%Y-%m-%d') }}{% endif %}
             </p>
             <p class="muted small">
                 User returned:
                 <strong>{{ 'Yes' if booking.delivery_returned_by_user else 'No' }}</strong>
-                {% if booking.delivery_returned_by_user_at %} · {{ booking.delivery_returned_by_user_at.strftime('%Y-%m-%d') }}{% endif %}
+                {% if booking.delivery_returned_by_user_at %} Â· {{ booking.delivery_returned_by_user_at.strftime('%Y-%m-%d') }}{% endif %}
             </p>
             <p class="muted small">
                 Expected delivery:
-                <strong>{% if booking.expected_delivery_at %}{{ booking.expected_delivery_at.strftime('%Y-%m-%d %H:%M') }}{% else %}—{% endif %}</strong>
+                <strong>{% if booking.expected_delivery_at %}{{ booking.expected_delivery_at.strftime('%Y-%m-%d %H:%M') }}{% else %}â€”{% endif %}</strong>
             </p>
             <p class="muted small">
                 Actual delivery:
-                <strong>{% if booking.actual_delivery_at %}{{ booking.actual_delivery_at.strftime('%Y-%m-%d %H:%M') }}{% else %}—{% endif %}</strong>
+                <strong>{% if booking.actual_delivery_at %}{{ booking.actual_delivery_at.strftime('%Y-%m-%d %H:%M') }}{% else %}â€”{% endif %}</strong>
             </p>
             <p class="muted small">
                 Delivery delay:
                 <strong>
                     {% if booking.is_delivery_delayed %}Delayed by {{ booking.delivery_delay_minutes or 0 }} min{% else %}On time{% endif %}
                 </strong>
-                {% if booking.delay_reason %} · {{ booking.delay_reason }}{% endif %}
+                {% if booking.delay_reason %} Â· {{ booking.delay_reason }}{% endif %}
             </p>
         </div>
 
@@ -62,11 +62,11 @@
                 <p class="muted small">Example GPS fix for this rental. Real fleets use telematics devices.</p>
                 <div class="map-mock" role="img" aria-label="Map preview">
                     <div class="map-mock-inner"></div>
-                    <span class="map-pin" aria-hidden="true">📍</span>
+                    <span class="map-pin" aria-hidden="true">ðŸ“</span>
                 </div>
                 <p class="coords">
                     <strong>Lat</strong> {{ '%.5f' % plat }}
-                    &nbsp;·&nbsp;
+                    &nbsp;Â·&nbsp;
                     <strong>Lng</strong> {{ '%.5f' % plng }}
                 </p>
                 <a class="map-link" target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat={{ plat }}&mlon={{ plng }}#map=16/{{ plat }}/{{ plng }}">Open in OpenStreetMap</a>
@@ -75,7 +75,7 @@
                 <h3>Rental period</h3>
                 <ul class="date-list">
                     <li><span>Started</span> <strong>{{ booking.rental_start.strftime('%Y-%m-%d %H:%M') if booking.rental_start else booking.created_at.strftime('%Y-%m-%d %H:%M') }}</strong></li>
-                    <li><span>Ends</span> <strong>{{ booking.rental_end.strftime('%Y-%m-%d %H:%M') if booking.rental_end else '—' }}</strong></li>
+                    <li><span>Ends</span> <strong>{{ booking.rental_end.strftime('%Y-%m-%d %H:%M') if booking.rental_end else 'â€”' }}</strong></li>
                     <li><span>Days</span> <strong>{{ booking.rental_days or booking.quantity }}</strong></li>
                     {% if booking.delivery_address %}
                     <li><span>Delivery</span> <strong>{{ booking.delivery_address }}</strong></li>
@@ -91,7 +91,7 @@
             <div class="damage-list">
                 {% for d in damages %}
                 <div class="damage-item">
-                    <div class="damage-meta">{{ d.created_at.strftime('%Y-%m-%d') }} · {{ d.area_on_vehicle }}</div>
+                    <div class="damage-meta">{{ d.created_at.strftime('%Y-%m-%d') }} Â· {{ d.area_on_vehicle }}</div>
                     <p>{{ d.damage_description }}</p>
                     {% if d.responsible_party %}<p class="muted small">Responsible / who caused: {{ d.responsible_party }}</p>{% endif %}
                     {% if d.reporter %}<p class="muted small">Logged by staff: {{ d.reporter.username }}</p>{% endif %}
@@ -109,3 +109,4 @@
         </div>
     </div>
 {% endblock %}
+

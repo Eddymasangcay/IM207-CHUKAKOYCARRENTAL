@@ -1,5 +1,5 @@
-{% extends "base.html" %}
-{% block title %}{{ transport.name }} — {{ site_brand }}{% endblock %}
+﻿{% extends "Base.html" %}
+{% block title %}{{ transport.name }} â€” {{ site_brand }}{% endblock %}
 {% block head_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='Styles/Dashboard.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='Styles/Transportation.css') }}">
@@ -9,7 +9,7 @@
 
 {% block content %}
 {% set rental_step = 1 %}
-{% include 'partials/rental_stepper.html' %}
+{% include 'partials/RentalStepper.html' %}
 
 <div class="ck-container vehicle-detail-wrap">
     <div class="vehicle-detail-grid">
@@ -40,9 +40,9 @@
             {% if has_date_filter %}
             <p class="vehicle-detail-avail {% if available_for_dates %}is-ok{% else %}is-no{% endif %}">
                 {% if available_for_dates %}
-                Available for {{ search_pickup }} → {{ search_return }}.
+                Available for {{ search_pickup }} â†’ {{ search_return }}.
                 {% else %}
-                Not available for {{ search_pickup }} → {{ search_return }}. Adjust dates on the fleet page or pick another vehicle.
+                Not available for {{ search_pickup }} â†’ {{ search_return }}. Adjust dates on the fleet page or pick another vehicle.
                 {% endif %}
             </p>
             {% else %}
@@ -68,8 +68,9 @@
             <p class="vehicle-detail-login"><a class="ck-btn ck-btn--primary" href="{{ url_for('loginpage') }}">Log in to book</a></p>
             {% endif %}
 
-            <p class="vehicle-detail-back"><a href="{{ url_for('transportations') }}">← Back to fleet</a></p>
+            <p class="vehicle-detail-back"><a href="{{ url_for('transportations') }}">â† Back to fleet</a></p>
         </div>
     </div>
 </div>
 {% endblock %}
+

@@ -1,5 +1,5 @@
-{% extends "base.html" %}
-{% block title %}Payment — {{ site_brand }}{% endblock %}
+﻿{% extends "Base.html" %}
+{% block title %}Payment â€” {{ site_brand }}{% endblock %}
 {% block head_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='Styles/Dashboard.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='Styles/Payment.css') }}">
@@ -9,7 +9,7 @@
 
 {% block content %}
     {% set rental_step = 5 %}
-    {% include 'partials/rental_stepper.html' %}
+    {% include 'partials/RentalStepper.html' %}
 
     <div class="dashboard ck-container">
         <div class="welcome">
@@ -45,7 +45,7 @@
                     <span><strong>Vehicle</strong> {{ transport.name }}</span>
                     <span><strong>Rate</strong> ${{ '%.2f' % transport.price }}</span>
                 </div>
-                <p><strong>Pickup:</strong> {{ pickup_date }} &nbsp;→&nbsp; <strong>Return:</strong> {{ return_date }}</p>
+                <p><strong>Pickup:</strong> {{ pickup_date }} &nbsp;â†’&nbsp; <strong>Return:</strong> {{ return_date }}</p>
                 <p><strong>Rental days (inclusive):</strong> {{ quantity }}</p>
                 {% if delivery_address %}
                 <p><strong>Delivery address:</strong> {{ delivery_address }}</p>
@@ -63,7 +63,7 @@
             </div>
         </div>
 
-        <p class="pay-page-intro">Pick your billing region, then tap a payment method—same idea as choosing language on a global site.</p>
+        <p class="pay-page-intro">Pick your billing region, then tap a payment methodâ€”same idea as choosing language on a global site.</p>
 
         <div class="pay-modern-wrap">
             <div class="pay-modern-card">
@@ -71,8 +71,8 @@
                     {{ csrf_input()|safe }}
                     <label class="pay-field-label" for="pay_currency">Pay in</label>
                     <select class="pay-modern-select" id="pay_currency" name="pay_currency" aria-label="Currency and region">
-                        <option value="PHP">Philippines — PHP (₱)</option>
-                        <option value="USD">International — USD ($)</option>
+                        <option value="PHP">Philippines â€” PHP (â‚±)</option>
+                        <option value="USD">International â€” USD ($)</option>
                     </select>
 
                     <label class="pay-field-label" for="delivery_address">Delivery address</label>
@@ -228,3 +228,4 @@
         })();
     </script>
 {% endblock %}
+
