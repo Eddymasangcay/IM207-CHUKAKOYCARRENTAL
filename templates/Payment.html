@@ -51,6 +51,7 @@
                 <p><strong>Delivery address:</strong> {{ delivery_address }}</p>
                 {% endif %}
                 <p><strong>Total:</strong> ${{ '%.2f' % total_price }}</p>
+                <p class="muted" style="margin-top:0.5rem;">PayMongo charges in <strong>PHP</strong> using the app&rsquo;s USD&rarr;PHP rate ({{ '%.2f' % USD_TO_PHP_RATE }}).</p>
             </div>
         </div>
 
@@ -85,6 +86,13 @@
                             <span class="pay-pill-inner">
                                 <span class="pay-pill-icon pay-pill-icon--gcash" aria-hidden="true">GC</span>
                                 <span class="pay-pill-name">GCash</span>
+                            </span>
+                        </label>
+                        <label class="pay-pill">
+                            <input type="radio" name="payment_method" value="paymongo">
+                            <span class="pay-pill-inner">
+                                <span class="pay-pill-icon pay-pill-icon--cc" aria-hidden="true">Pg</span>
+                                <span class="pay-pill-name">PayMongo</span>
                             </span>
                         </label>
                         <label class="pay-pill">
@@ -148,6 +156,7 @@
 
                     <button type="submit" class="btn-pay" id="btn-standard" formaction="{{ url_for('process_payment') }}" formmethod="post">Confirm payment</button>
                     <button type="submit" class="btn-pay" id="btn-gcash-qr" formaction="{{ url_for('gcash_qr_prepare') }}" formmethod="post" hidden>Continue to GCash QR</button>
+                    <button type="submit" class="btn-pay" id="btn-paymongo" formaction="{{ url_for('paymongo_checkout_start') }}" formmethod="post" hidden>Continue to PayMongo</button>
                     <a class="cancel-link" href="{{ url_for('transportations') }}">Cancel and return to fleet</a>
                 </form>
             </div>
@@ -180,6 +189,7 @@
             var walletHint = document.getElementById("pay-wallet-hint");
             var btnStandard = document.getElementById("btn-standard");
             var btnGcash = document.getElementById("btn-gcash-qr");
+            var btnPaymongo = document.getElementById("btn-paymongo");
             var cardInputs = ["card_number", "expiry", "cvv"].map(function (id) {
                 return document.getElementById(id);
             });
@@ -192,21 +202,25 @@
             function syncPanels() {
                 var m = currentMethod();
                 var showCard = m === "credit_card" || m === "debit_card";
-                var showWalletHint = m === "gcash" || m === "paymaya" || m === "paypal";
+                var showWalletHint = m === "gcash" || m === "paymaya" || m === "paypal" || m === "paymongo";
 
                 cardPanel.hidden = !showCard;
                 walletHint.hidden = !showWalletHint;
                 if (walletHint) {
                     if (m === "gcash") {
                         walletHint.innerHTML = "<strong>GCash QR.</strong> You will open a secure QR screen, scan with GCash, then confirm payment to receive your receipt.";
+                    } else if (m === "paymongo") {
+                        walletHint.innerHTML = "<strong>PayMongo.</strong> You will pay in PHP on PayMongo (card, Maya, GCash, etc.). When payment succeeds, you will return here and we will open your receipt.";
                     } else if (m === "paymaya" || m === "paypal") {
                         walletHint.innerHTML = "<strong>Simulated checkout.</strong> In production you would be redirected to Maya or PayPal. Here, confirming saves your booking as paid.";
                     }
                 }
                 if (btnStandard && btnGcash) {
                     var gc = m === "gcash";
-                    btnStandard.hidden = gc;
+                    var pm = m === "paymongo";
+                    btnStandard.hidden = gc || pm;
                     btnGcash.hidden = !gc;
+                    if (btnPaymongo) btnPaymongo.hidden = !pm;
                 }
 
                 cardInputs.forEach(function (el) {

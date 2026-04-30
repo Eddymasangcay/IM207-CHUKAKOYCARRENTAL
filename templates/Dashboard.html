@@ -609,6 +609,7 @@
                             Paid with:
                             <strong>
                                 {% if b.payment_method == 'gcash' %}GCash
+                                {% elif b.payment_method == 'paymongo' %}PayMongo
                                 {% elif b.payment_method == 'paymaya' %}PayMaya
                                 {% elif b.payment_method == 'credit_card' %}Credit card
                                 {% elif b.payment_method == 'debit_card' %}Debit card

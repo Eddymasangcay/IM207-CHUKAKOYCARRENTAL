@@ -34,7 +34,7 @@
                 <div class="receipt-line"><span>Payment</span><span>
                     {% if booking.payment_status == 'paid' %}Paid{% else %}{{ booking.payment_status|title }}{% endif %}
                     {% if booking.payment_method %}
-                        Â· {% if booking.payment_method == 'gcash' %}GCash{% elif booking.payment_method == 'paymaya' %}PayMaya{% elif booking.payment_method == 'credit_card' %}Credit card{% elif booking.payment_method == 'debit_card' %}Debit card{% elif booking.payment_method == 'paypal' %}PayPal{% elif booking.payment_method == 'cash' %}Cash{% else %}{{ booking.payment_method }}{% endif %}
+                        Â· {% if booking.payment_method == 'gcash' %}GCash{% elif booking.payment_method == 'paymongo' %}PayMongo{% elif booking.payment_method == 'paymaya' %}PayMaya{% elif booking.payment_method == 'credit_card' %}Credit card{% elif booking.payment_method == 'debit_card' %}Debit card{% elif booking.payment_method == 'paypal' %}PayPal{% elif booking.payment_method == 'cash' %}Cash{% else %}{{ booking.payment_method }}{% endif %}
                     {% endif %}
                     {% if booking.pay_currency %} ({{ booking.pay_currency }}){% endif %}
                 </span></div>

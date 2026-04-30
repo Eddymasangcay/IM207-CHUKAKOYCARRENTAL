@@ -6,11 +6,40 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect as sql_inspect, text, func, or_
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timedelta, date
+import base64
+import hashlib
+import hmac
 import json
 import os
 import random
 import secrets
 import string
+import urllib.error
+import urllib.request
+
+
+def _load_local_env_file():
+    """Load KEY=VALUE pairs from .env for local development."""
+    env_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), '.env')
+    if not os.path.isfile(env_path):
+        return
+    try:
+        with open(env_path, 'r', encoding='utf-8') as f:
+            for raw in f:
+                line = raw.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                key, value = line.split('=', 1)
+                key = key.strip()
+                if not key:
+                    continue
+                value = value.strip().strip('"').strip("'")
+                os.environ.setdefault(key, value)
+    except OSError:
+        return
+
+
+_load_local_env_file()
 
 app = Flask(__name__, static_folder='.', static_url_path='/static', template_folder='Templates')
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32)
@@ -37,7 +66,14 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 db_path = os.path.join(database_folder, 'CCRS-BMBB.db')
 # Convert Windows backslashes to forward slashes for SQLite URI
 db_uri = db_path.replace('\\', '/')
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_uri}"
+database_url = (os.environ.get("DATABASE_URL") or "").strip()
+if database_url:
+    # Some hosts provide postgres://, while SQLAlchemy expects postgresql://
+    if database_url.startswith("postgres://"):
+        database_url = "postgresql://" + database_url[len("postgres://"):]
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+else:
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_uri}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
@@ -85,6 +121,9 @@ def csrf_input():
 def csrf_protect():
     if request.method != 'POST':
         return
+    # External providers (e.g., PayMongo webhooks) cannot provide our form CSRF token.
+    if request.path == '/webhooks/paymongo':
+        return
     token = request.form.get('csrf_token', '')
     expected = session.get('_csrf_token', '')
     if not token or not expected or not secrets.compare_digest(token, expected):
@@ -106,6 +145,7 @@ def inject_site_globals():
         "site_year": datetime.utcnow().year,
         "nav_staff": nav_staff,
         "csrf_token": _get_csrf_token(),
+        "USD_TO_PHP_RATE": USD_TO_PHP_RATE,
     }
 
 
@@ -239,6 +279,237 @@ def _clean_delivery_address(raw: str) -> str:
     if len(addr) > 300:
         addr = addr[:300].strip()
     return addr
+
+
+def _paymongo_secret_key() -> str:
+    return (os.environ.get('PAYMONGO_SECRET_KEY') or '').strip()
+
+
+def _paymongo_basic_auth_header() -> str | None:
+    key = _paymongo_secret_key()
+    if not key:
+        return None
+    token = base64.b64encode(f'{key}:'.encode('utf-8')).decode('ascii')
+    return f'Basic {token}'
+
+
+def _absolute_url_for(endpoint: str, **values) -> str:
+    """Build an absolute URL for PayMongo redirects. Set PUBLIC_APP_URL when behind a tunnel or reverse proxy."""
+    base = (os.environ.get('PUBLIC_APP_URL') or '').rstrip('/')
+    path = url_for(endpoint, **values)
+    if base:
+        return f'{base}{path}'
+    return url_for(endpoint, _external=True, **values)
+
+
+def _paymongo_default_payment_method_types() -> list:
+    raw = (os.environ.get('PAYMONGO_PAYMENT_METHOD_TYPES') or 'card,gcash,paymaya').strip()
+    return [p.strip() for p in raw.split(',') if p.strip()]
+
+
+def _paymongo_webhook_secret() -> str:
+    return (os.environ.get('PAYMONGO_WEBHOOK_SECRET') or '').strip()
+
+
+def _parse_paymongo_signature_header(header: str) -> dict:
+    parsed = {}
+    for part in (header or '').split(','):
+        k, sep, v = part.strip().partition('=')
+        if not sep:
+            continue
+        parsed[k.strip()] = v.strip()
+    return parsed
+
+
+def _verify_paymongo_webhook_signature(raw_body: bytes, header: str) -> bool:
+    secret = _paymongo_webhook_secret()
+    if not secret:
+        return False
+    sig = _parse_paymongo_signature_header(header)
+    ts = sig.get('t', '')
+    digest_test = sig.get('te', '')
+    digest_live = sig.get('li', '')
+    if not ts or (not digest_test and not digest_live):
+        return False
+    payload = f'{ts}.{raw_body.decode("utf-8", errors="replace")}'
+    computed = hmac.new(secret.encode('utf-8'), payload.encode('utf-8'), hashlib.sha256).hexdigest()
+    target = digest_live or digest_test
+    return bool(target) and hmac.compare_digest(computed, target)
+
+
+class PayMongoAPIError(Exception):
+    def __init__(self, message: str, status: int | None = None, body: str | None = None):
+        super().__init__(message)
+        self.status = status
+        self.body = body
+
+
+def _paymongo_request(method: str, path: str, payload: dict | None) -> dict:
+    auth = _paymongo_basic_auth_header()
+    if not auth:
+        raise PayMongoAPIError('PayMongo is not configured.')
+    url = f'https://api.paymongo.com/v1{path}'
+    data = None if payload is None else json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(url, data=data, method=method.upper())
+    req.add_header('Authorization', auth)
+    req.add_header('Content-Type', 'application/json')
+    try:
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            return json.loads(resp.read().decode('utf-8'))
+    except urllib.error.HTTPError as e:
+        raw = e.read().decode('utf-8', errors='replace')
+        raise PayMongoAPIError(f'PayMongo request failed ({e.code}).', status=e.code, body=raw) from e
+
+
+def _paymongo_checkout_line_amount_centavos(usd_total: float) -> int:
+    php = round(float(usd_total) * USD_TO_PHP_RATE, 2)
+    cents = int(round(php * 100))
+    return max(cents, 100)
+
+
+def _paymongo_extract_checkout_url_and_id(body: dict) -> tuple[str, str]:
+    data = body.get('data') or {}
+    cs_id = data.get('id') or ''
+    attrs = data.get('attributes') or {}
+    checkout_url = attrs.get('checkout_url') or ''
+    if not cs_id or not checkout_url:
+        raise PayMongoAPIError('Invalid PayMongo checkout response.')
+    return checkout_url, cs_id
+
+
+def _paymongo_checkout_paid_payment_refs(body: dict) -> list[str]:
+    """Return PayMongo payment ids with status paid for a checkout session JSON."""
+    data = body.get('data') or {}
+    attrs = data.get('attributes') or {}
+    payments = attrs.get('payments') or []
+    refs = []
+    for p in payments:
+        if not isinstance(p, dict):
+            continue
+        pa = p.get('attributes') or {}
+        if (pa.get('status') or '').lower() == 'paid':
+            pid = p.get('id')
+            if pid:
+                refs.append(pid)
+    return refs
+
+
+def _finalize_rental_request_after_payment_by_id(booking, rental_request_id):
+    """Webhook-safe variant: no Flask session dependency."""
+    if not rental_request_id:
+        return
+    try:
+        rid = int(rental_request_id)
+    except (TypeError, ValueError):
+        return
+    rr = RentalRequest.query.get(rid)
+    if rr and rr.user_id == booking.user_id and rr.status == 'approved':
+        rr.booking_id = booking.id
+        rr.status = 'paid'
+        db.session.commit()
+
+
+def _paymongo_begin_hosted_checkout():
+    """Validate checkout session and redirect the browser to PayMongo hosted checkout."""
+    if 'username' not in session:
+        return redirect(url_for('index'))
+    if 'pending_booking' not in session:
+        return redirect(url_for('transportations'))
+    if not _paymongo_secret_key():
+        flash('PayMongo is not configured. Set the PAYMONGO_SECRET_KEY environment variable.', 'error')
+        return redirect(url_for('payment'))
+
+    current_user = User.query.filter_by(username=session['username']).first()
+    if not current_user:
+        session.pop('username', None)
+        return redirect(url_for('index'))
+
+    pending = dict(session['pending_booking'])
+    transport = Transportation.query.get_or_404(pending['transportation_id'])
+    pending = _normalize_pending_booking(pending, transport)
+    session['pending_booking'] = pending
+    session.modified = True
+
+    rid = session.get('checkout_rental_request_id')
+    if rid:
+        rr = RentalRequest.query.get(rid)
+        if not rr or rr.user_id != current_user.id or rr.status != 'approved':
+            flash('Invalid checkout session.', 'error')
+            return redirect(url_for('dashboard'))
+        if rr.booking_id:
+            flash('This rental request is already paid.', 'error')
+            return redirect(url_for('receipt', booking_id=rr.booking_id))
+    else:
+        rr = None
+
+    delivery_address = _clean_delivery_address(request.form.get('delivery_address', ''))
+    if not delivery_address:
+        flash('Please enter a delivery address for the vehicle.', 'error')
+        return redirect(url_for('payment'))
+    pending['delivery_address'] = delivery_address
+    pending = _normalize_pending_booking(pending, transport)
+    session['pending_booking'] = pending
+    session.modified = True
+
+    line_cents = _paymongo_checkout_line_amount_centavos(pending['total_price'])
+    desc = f"{transport.name} rental ({pending.get('quantity', 1)} day(s))"
+    if len(desc) > 255:
+        desc = desc[:252] + '...'
+
+    success_url = _absolute_url_for('paymongo_checkout_complete')
+    cancel_url = _absolute_url_for('payment')
+
+    meta = {
+        'user_id': str(current_user.id),
+        'rental_request_id': str(rid) if rid else '',
+        'expected_centavos': str(line_cents),
+    }
+
+    payload = {
+        'data': {
+            'attributes': {
+                'line_items': [
+                    {
+                        'amount': line_cents,
+                        'currency': 'PHP',
+                        'name': (transport.name or 'Vehicle rental')[:255],
+                        'quantity': 1,
+                        'description': desc,
+                    }
+                ],
+                'payment_method_types': _paymongo_default_payment_method_types(),
+                'success_url': success_url,
+                'cancel_url': cancel_url,
+                'description': 'Car rental checkout',
+                'send_email_receipt': False,
+                'metadata': meta,
+            }
+        }
+    }
+
+    try:
+        resp = _paymongo_request('POST', '/checkout_sessions', payload)
+        checkout_url, cs_id = _paymongo_extract_checkout_url_and_id(resp)
+    except PayMongoAPIError as exc:
+        msg = 'Could not start PayMongo checkout.'
+        if exc.status and exc.body:
+            try:
+                err_json = json.loads(exc.body)
+                errs = (err_json.get('errors') or [])
+                if errs and isinstance(errs, list):
+                    first = errs[0] if errs else {}
+                    detail = (first.get('detail') or first.get('title') or '').strip()
+                    if detail:
+                        msg = detail[:200]
+            except (json.JSONDecodeError, TypeError):
+                pass
+        flash(msg, 'error')
+        return redirect(url_for('payment'))
+
+    session['paymongo_return_cs_id'] = cs_id
+    session['paymongo_expected_centavos'] = str(line_cents)
+    session.modified = True
+    return redirect(checkout_url)
 
 
 def _mock_gps_coords(region: str, seed: int):
@@ -1729,7 +2000,7 @@ def admin_renter_review_add():
     return redirect(url_for('dashboard'))
 
 
-def _create_paid_booking(current_user, pending, payment_method, pay_currency, payment_reference=None):
+def _create_paid_booking(current_user, pending, payment_method, pay_currency, payment_reference=None, total_price_override=None):
     """Create a paid booking from a pending dict with transportation_id, quantity, total_price."""
     plate_number = generate_unique_plate_number()
     transport = Transportation.query.get(pending['transportation_id'])
@@ -1750,7 +2021,10 @@ def _create_paid_booking(current_user, pending, payment_method, pay_currency, pa
         end = start + timedelta(days=days)
     seed = (Booking.query.count() or 0) + 1
     lat, lng = _mock_gps_coords(reg, seed)
-    total_price = round(float(transport.price) * days, 2)
+    if total_price_override is not None:
+        total_price = round(float(total_price_override), 2)
+    else:
+        total_price = round(float(transport.price) * days, 2)
     delivery_address = _clean_delivery_address(pending.get('delivery_address', ''))
     if _has_vehicle_booking_conflict(transport.id, start.date(), end.date()):
         raise ValueError('Selected vehicle is no longer available for those dates.')
@@ -2011,6 +2285,232 @@ def gcash_qr_cancel():
     return redirect(url_for('payment'))
 
 
+@app.route('/payment/paymongo/start', methods=['POST'])
+def paymongo_checkout_start():
+    return _paymongo_begin_hosted_checkout()
+
+
+@app.route('/payment/paymongo/complete', methods=['GET'])
+def paymongo_checkout_complete():
+    if 'username' not in session:
+        return redirect(url_for('loginpage'))
+    current_user = User.query.filter_by(username=session['username']).first()
+    if not current_user:
+        session.pop('username', None)
+        return redirect(url_for('index'))
+
+    cs_id = session.get('paymongo_return_cs_id')
+    if not cs_id:
+        flash('No PayMongo session found. Start checkout again from the payment page.', 'error')
+        return redirect(url_for('dashboard'))
+
+    rid = session.get('checkout_rental_request_id')
+    if rid:
+        rr_early = RentalRequest.query.get(rid)
+        if rr_early and rr_early.booking_id:
+            session.pop('paymongo_return_cs_id', None)
+            session.pop('paymongo_expected_centavos', None)
+            session.pop('pending_booking', None)
+            return redirect(url_for('receipt', booking_id=rr_early.booking_id))
+
+    try:
+        body = _paymongo_request('GET', f'/checkout_sessions/{cs_id}', None)
+    except PayMongoAPIError as exc:
+        if exc.status == 404:
+            flash(
+                'PayMongo checkout session was not found. Make sure you are using the same mode/key (test vs live) for this payment.',
+                'error',
+            )
+        else:
+            flash('Could not verify payment with PayMongo. Try again or contact support.', 'error')
+        return redirect(url_for('payment'))
+
+    paid_refs = _paymongo_checkout_paid_payment_refs(body)
+    if not paid_refs:
+        flash(
+            'Payment is not showing as completed yet. Wait a moment and refresh this page, or return to checkout.',
+            'error',
+        )
+        return redirect(url_for('payment'))
+
+    meta = ((body.get('data') or {}).get('attributes') or {}).get('metadata') or {}
+    if str(meta.get('user_id', '')) != str(current_user.id):
+        flash('This payment does not match your account.', 'error')
+        return redirect(url_for('dashboard'))
+
+    if rid and meta.get('rental_request_id') and str(meta.get('rental_request_id')) != str(rid):
+        flash('Checkout data no longer matches this rental. Start again from your dashboard.', 'error')
+        return redirect(url_for('dashboard'))
+
+    pending = dict(session.get('pending_booking') or {})
+    if not pending.get('transportation_id'):
+        flash('Your booking session expired. Start payment again from the dashboard.', 'error')
+        return redirect(url_for('dashboard'))
+
+    transport = Transportation.query.get_or_404(pending['transportation_id'])
+    pending = _normalize_pending_booking(pending, transport)
+
+    exp = session.get('paymongo_expected_centavos')
+    try:
+        expected_cents = int(exp) if exp is not None else None
+    except (TypeError, ValueError):
+        expected_cents = None
+
+    first_paid_attrs = None
+    for p in ((body.get('data') or {}).get('attributes') or {}).get('payments') or []:
+        if not isinstance(p, dict):
+            continue
+        pa = p.get('attributes') or {}
+        if (pa.get('status') or '').lower() == 'paid':
+            first_paid_attrs = pa
+            break
+
+    paid_amount = int((first_paid_attrs or {}).get('amount') or 0)
+    try:
+        meta_expected = int(meta.get('expected_centavos')) if meta.get('expected_centavos') else None
+    except (TypeError, ValueError):
+        meta_expected = None
+
+    if meta_expected is not None and paid_amount and paid_amount != meta_expected:
+        flash('Paid amount does not match this order. Contact support before continuing.', 'error')
+        return redirect(url_for('payment'))
+    if expected_cents is not None and paid_amount and paid_amount != expected_cents:
+        flash('Paid amount does not match this order. Contact support before continuing.', 'error')
+        return redirect(url_for('payment'))
+
+    php_total = round(paid_amount / 100.0, 2) if paid_amount else round(float(pending['total_price']) * USD_TO_PHP_RATE, 2)
+
+    rr = RentalRequest.query.get(rid) if rid else None
+    if rr and rr.booking_id:
+        session.pop('paymongo_return_cs_id', None)
+        session.pop('paymongo_expected_centavos', None)
+        session.pop('pending_booking', None)
+        return redirect(url_for('receipt', booking_id=rr.booking_id))
+
+    payment_reference = paid_refs[0]
+    existing_tx = PaymentTransaction.query.filter_by(reference=payment_reference, status='paid').first()
+    if existing_tx:
+        session.pop('paymongo_return_cs_id', None)
+        session.pop('paymongo_expected_centavos', None)
+        session.pop('pending_booking', None)
+        return redirect(url_for('receipt', booking_id=existing_tx.booking_id))
+
+    try:
+        booking = _create_paid_booking(
+            current_user,
+            pending,
+            'paymongo',
+            'PHP',
+            payment_reference=payment_reference,
+            total_price_override=php_total,
+        )
+    except ValueError as exc:
+        flash(str(exc), 'error')
+        return redirect(url_for('payment'))
+
+    _finalize_rental_request_after_payment(booking)
+    session.pop('paymongo_return_cs_id', None)
+    session.pop('paymongo_expected_centavos', None)
+    session.pop('pending_booking', None)
+    return redirect(url_for('receipt', booking_id=booking.id))
+
+
+@app.route('/webhooks/paymongo', methods=['POST'])
+def paymongo_webhook():
+    raw = request.get_data(cache=False)
+    signature = request.headers.get('Paymongo-Signature', '')
+    if not _verify_paymongo_webhook_signature(raw, signature):
+        return {'ok': False, 'error': 'invalid signature'}, 400
+
+    try:
+        payload = json.loads(raw.decode('utf-8'))
+    except json.JSONDecodeError:
+        return {'ok': False, 'error': 'invalid json'}, 400
+
+    event_data = (payload.get('data') or {})
+    event_attrs = event_data.get('attributes') or {}
+    event_type = (event_attrs.get('type') or '').strip().lower()
+    if event_type != 'checkout_session.payment.paid':
+        return {'ok': True, 'ignored': True}, 200
+
+    checkout = event_attrs.get('data') or {}
+    checkout_attrs = checkout.get('attributes') or {}
+    meta = checkout_attrs.get('metadata') or {}
+    payments = checkout_attrs.get('payments') or []
+
+    paid_payment = None
+    for p in payments:
+        if not isinstance(p, dict):
+            continue
+        attrs = p.get('attributes') or {}
+        if (attrs.get('status') or '').lower() == 'paid':
+            paid_payment = p
+            break
+    if not paid_payment:
+        return {'ok': True, 'ignored': True}, 200
+
+    payment_reference = (paid_payment.get('id') or '').strip()
+    if not payment_reference:
+        return {'ok': False, 'error': 'missing payment id'}, 400
+
+    existing_tx = PaymentTransaction.query.filter_by(reference=payment_reference, status='paid').first()
+    if existing_tx:
+        return {'ok': True, 'idempotent': True}, 200
+
+    try:
+        user_id = int(meta.get('user_id'))
+        rid = int(meta.get('rental_request_id'))
+        expected_centavos = int(meta.get('expected_centavos'))
+    except (TypeError, ValueError):
+        return {'ok': False, 'error': 'invalid metadata'}, 400
+
+    user = User.query.get(user_id)
+    rr = RentalRequest.query.get(rid)
+    if not user or not rr:
+        return {'ok': False, 'error': 'invalid references'}, 400
+    if rr.user_id != user.id:
+        return {'ok': False, 'error': 'user mismatch'}, 400
+    if rr.booking_id:
+        return {'ok': True, 'idempotent': True}, 200
+    if rr.status != 'approved':
+        return {'ok': False, 'error': 'rental request not approved'}, 409
+
+    paid_amount = int(((paid_payment.get('attributes') or {}).get('amount')) or 0)
+    if paid_amount <= 0 or expected_centavos != paid_amount:
+        return {'ok': False, 'error': 'amount mismatch'}, 409
+
+    transport = Transportation.query.get(rr.transportation_id)
+    if not transport:
+        return {'ok': False, 'error': 'transport missing'}, 400
+
+    pending = _normalize_pending_booking(
+        {
+            'transportation_id': rr.transportation_id,
+            'quantity': rr.quantity,
+            'total_price': rr.total_price,
+            'pickup_date': rr.pickup_date,
+            'return_date': rr.return_date,
+            'delivery_address': '',
+        },
+        transport,
+    )
+    php_total = round(paid_amount / 100.0, 2)
+    try:
+        booking = _create_paid_booking(
+            user,
+            pending,
+            'paymongo',
+            'PHP',
+            payment_reference=payment_reference,
+            total_price_override=php_total,
+        )
+    except ValueError:
+        return {'ok': False, 'error': 'booking creation failed'}, 409
+
+    _finalize_rental_request_after_payment_by_id(booking, rid)
+    return {'ok': True, 'booking_id': booking.id}, 200
+
+
 @app.route('/payment/gcash-qr/confirm', methods=['POST'])
 def gcash_qr_confirm():
     if 'username' not in session:
@@ -2078,7 +2578,7 @@ def process_payment():
             return redirect(url_for('dashboard'))
 
     allowed_methods = frozenset(
-        {'gcash', 'paymaya', 'credit_card', 'debit_card', 'paypal', 'cash'}
+        {'gcash', 'paymaya', 'credit_card', 'debit_card', 'paypal', 'cash', 'paymongo'}
     )
     payment_method = request.form.get('payment_method', '').strip().lower()
     if payment_method not in allowed_methods:
@@ -2093,6 +2593,9 @@ def process_payment():
         flash('Please enter a delivery address for the vehicle.', 'error')
         return redirect(url_for('payment'))
     pending['delivery_address'] = delivery_address
+
+    if payment_method == 'paymongo':
+        return _paymongo_begin_hosted_checkout()
 
     if payment_method == 'gcash':
         flash('For GCash, use â€œContinue to GCash QRâ€, scan the code, then confirm payment.', 'error')
