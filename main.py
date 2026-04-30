@@ -41,7 +41,7 @@ def _load_local_env_file():
 
 _load_local_env_file()
 
-app = Flask(__name__, static_folder='.', static_url_path='/static', template_folder='Templates')
+app = Flask(__name__, static_folder='.', static_url_path='/static', template_folder='templates')
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32)
 
 # Set up database path - use Database folder
