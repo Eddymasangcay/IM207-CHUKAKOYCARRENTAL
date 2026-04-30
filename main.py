@@ -71,6 +71,9 @@ if database_url:
     # Some hosts provide postgres://, while SQLAlchemy expects postgresql://
     if database_url.startswith("postgres://"):
         database_url = "postgresql://" + database_url[len("postgres://"):]
+    # Use psycopg v3 driver explicitly to avoid psycopg2 import errors on managed hosts.
+    if database_url.startswith("postgresql://"):
+        database_url = "postgresql+psycopg://" + database_url[len("postgresql://"):]
     app.config["SQLALCHEMY_DATABASE_URI"] = database_url
 else:
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_uri}"
